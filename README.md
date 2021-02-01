@@ -3,8 +3,11 @@
 ## Installation
 
 ```
-kubectl apply -f 
+ kubectl apply -f https://gitlab.com/rajdas98/kv-exporter/-/raw/master/k8s-manifest.yaml
 ```
+
+### Import grafana dashbaord
+Link- https://gitlab.com/rajdas98/kv-exporter/-/raw/master/grafana-dashboard.yaml
 
 ## Metrics Support
 - Total count of violations

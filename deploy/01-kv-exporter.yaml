@@ -37,7 +37,7 @@ metadata:
   name: kv-exporter
   namespace: kyverno
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: kv-exporter
@@ -47,7 +47,6 @@ spec:
         app: kv-exporter
     spec:
       serviceAccountName: kv-sa
-      replicas: 2
       containers:
         - image: imrajdas/kv-exporter:ci
           imagePullPolicy: Always
