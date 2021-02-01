@@ -7,7 +7,7 @@
 ```
 
 ### Import grafana dashbaord
-Link- https://gitlab.com/rajdas98/kv-exporter/-/raw/master/grafana-dashboard.yaml
+Link- https://gitlab.com/rajdas98/kv-exporter/-/raw/master/grafana-dashboard.json
 
 ## Metrics Support
 - Total count of violations
