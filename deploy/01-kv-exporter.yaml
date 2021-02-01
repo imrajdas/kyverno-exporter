@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kv-sa
+  namespace: kyverno
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kv-cluster-role
+  namespace: kyverno
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kv-cluster-role-binding
+  namespace: kyverno
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kv-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: kv-sa
+    namespace: kyverno
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kv-exporter
+  name: kv-exporter
+  namespace: kyverno
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kv-exporter
+  template:
+    metadata:
+      labels:
+        app: kv-exporter
+    spec:
+      serviceAccountName: kv-sa
+      replicas: 2
+      containers:
+        - image: imrajdas/kv-exporter:ci
+          imagePullPolicy: Always
+          name: kv-exporter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kv-exporter
+  name: kv-exporter
+  namespace: kyverno
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: kv-exporter
+  type: NodePort
