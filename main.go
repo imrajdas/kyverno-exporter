@@ -6,6 +6,7 @@ import (
 	v1 "github.com/kyverno/kyverno/pkg/api/kyverno/v1"
 	"github.com/kyverno/kyverno/pkg/api/policyreport/v1alpha1"
 	client "github.com/kyverno/kyverno/pkg/dclient"
+	"github.com/kyverno/kyverno/pkg/signal"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/rest"
@@ -13,8 +14,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/kyverno/kyverno/pkg/signal"
 
 	logger "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -41,7 +40,7 @@ var stopCh = signal.SetupSignalHandler()
 // create client config
 var clientConfig, _ = createClientConfig("")
 
-var Client,  err = client.NewClient(clientConfig, 1*time.Second, stopCh, logger.Log)
+var Client,  err = client.NewClient(clientConfig, 15*time.Minute, stopCh, logger.Log)
 
 //You must create a constructor for you collector that
 //initializes every descriptor and returns a pointer to the collector
@@ -85,24 +84,24 @@ func (collector *KyvernoCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func getTCViolation() (float64, error){
 
-	cpolrs, err := Client.ListResource("", "PolicyReport", "", nil)
+	pr, err := Client.ListResource("", "PolicyReport", "", nil)
 	if err != nil {
 		return 0, err
 	}
 
 	var total_violation float64 = 0
-	var pr v1alpha1.PolicyReport
+	var newPR v1alpha1.PolicyReport
 
-	for _, report := range cpolrs.Items {
+	for _, report := range pr.Items {
 		marshalObj, err := json.Marshal(report.Object)
 		if err != nil {
 			return 0, nil
 		}
 
-		json.Unmarshal([]byte(marshalObj), &pr)
+		json.Unmarshal(marshalObj, &newPR)
 
-		if pr.Summary.Fail > 0 {
-			total_violation += float64(pr.Summary.Fail)
+		if newPR.Summary.Fail > 0 {
+			total_violation += float64(newPR.Summary.Fail)
 		}
 	}
 
@@ -111,23 +110,23 @@ func getTCViolation() (float64, error){
 
 func getTotalAuditPolicies() (float64, error){
 
-	cpolrs, err := Client.ListResource("", "ClusterPolicy", "", nil)
+	cp, err := Client.ListResource("", "ClusterPolicy", "", nil)
 	if err != nil {
 		return 0, err
 	}
 
 	var total_audit_policies float64 = 0
-	var pr v1.ClusterPolicy
+	var newCP v1.ClusterPolicy
 
-	for _, report := range cpolrs.Items {
+	for _, report := range cp.Items {
 		marshalObj, err := json.Marshal(report.Object)
 		if err != nil {
 			return 0, nil
 		}
 
-		json.Unmarshal([]byte(marshalObj), &pr)
+		json.Unmarshal([]byte(marshalObj), &newCP)
 
-		if pr.Spec.ValidationFailureAction == "audit" {
+		if newCP.Spec.ValidationFailureAction == "audit" {
 			total_audit_policies += 1
 		}
 	}
@@ -136,24 +135,24 @@ func getTotalAuditPolicies() (float64, error){
 }
 
 func totalSuccesfulApplicationPolicy() (float64, error){
-	cpolrs, err := Client.ListResource("", "PolicyReport", "", nil)
+	pr, err := Client.ListResource("", "PolicyReport", "", nil)
 	if err != nil {
 		return 0, err
 	}
 
 	var tc_successfull_policy_application float64 = 0
-	var pr v1alpha1.PolicyReport
+	var newPR v1alpha1.PolicyReport
 
-	for _, report := range cpolrs.Items {
+	for _, report := range pr.Items {
 		marshalObj, err := json.Marshal(report.Object)
 		if err != nil {
 			return 0, nil
 		}
 
-		json.Unmarshal([]byte(marshalObj), &pr)
+		json.Unmarshal(marshalObj, &newPR)
 
-		if pr.Summary.Pass > 0 {
-			tc_successfull_policy_application += float64(pr.Summary.Pass)
+		if newPR.Summary.Pass > 0 {
+			tc_successfull_policy_application += float64(newPR.Summary.Pass)
 		}
 	}
 
@@ -162,15 +161,15 @@ func totalSuccesfulApplicationPolicy() (float64, error){
 }
 
 func ViolationCountOnEnforceMode() (float64, error) {
-	cpolrs, err := Client.ListResource("", "PolicyReport", "", nil)
+	pr, err := Client.ListResource("", "PolicyReport", "", nil)
 	if err != nil {
 		return 0, err
 	}
 
 	var total_violation_on_enforce_mode float64 = 0
-	var pr v1alpha1.PolicyReport
+	var newPR v1alpha1.PolicyReport
 
-	for _, report := range cpolrs.Items {
+	for _, report := range pr.Items {
 		marshalObj, err := json.Marshal(report.Object)
 		if err != nil {
 			return 0, nil
@@ -178,8 +177,8 @@ func ViolationCountOnEnforceMode() (float64, error) {
 
 		json.Unmarshal([]byte(marshalObj), &pr)
 
-		if pr.Summary.Fail > 0 {
-			for _, result := range pr.Results {
+		if newPR.Summary.Fail > 0 {
+			for _, result := range newPR.Results {
 				if result.Status == "fail" {
 					getcp, err := Client.GetResource("","ClusterPolicy", "", result.Policy)
 					if err != nil {
