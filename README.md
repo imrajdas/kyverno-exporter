@@ -1,4 +1,4 @@
-## Kyverno exporter
+## Kyverno prometheus exporter
 
 ## Installation
 
